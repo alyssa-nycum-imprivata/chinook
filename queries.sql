@@ -43,8 +43,8 @@ e.FirstName AS 'SalesAgentFirstName',
 e.LastName AS 'SalesAgentLastName',
 i.*
 FROM Customer c
-JOIN Employee e ON e.EmployeeId = c.SupportRepId
-JOIN Invoice i ON c.CustomerId = i.CustomerId;
+LEFT JOIN Employee e ON e.EmployeeId = c.SupportRepId
+LEFT JOIN Invoice i ON c.CustomerId = i.CustomerId;
 
 -- 7) invoice_totals.sql: Provide a query that shows the Invoice Total, Customer name, Country and Sale Agent name for all invoices and customers.
 
@@ -56,22 +56,53 @@ e.FirstName AS 'SalesAgentFirstName',
 e.LastName AS 'SalesAgentLastName',
 i.Total
 FROM Customer c
-JOIN Employee e ON e.EmployeeId = c.SupportRepId
-JOIN Invoice i ON c.CustomerId = i.CustomerId;
+LEFT JOIN Employee e ON e.EmployeeId = c.SupportRepId
+LEFT JOIN Invoice i ON c.CustomerId = i.CustomerId;
 
 -- 8) total_invoices_{year}.sql: How many Invoices were there in 2009 and 2011?
+
+SELECT
+COUNT(i.InvoiceDate) AS 'NumberOfInvoices'
+FROM Invoice i 
+WHERE i.InvoiceDate LIKE '2009%'
+OR i.InvoiceDate LIKE '2011%';
 
 -- 9) total_sales_{year}.sql: What are the respective total sales for each of those years?
 
 -- 10) invoice_37_line_item_count.sql: Looking at the InvoiceLine table, provide a query that COUNTs the number of line items for Invoice ID 37.
 
+SELECT
+COUNT(i.InvoiceId) as 'Invoice37Count'
+FROM InvoiceLine i
+WHERE i.InvoiceId = 37;
+
 -- 11) line_items_per_invoice.sql: Looking at the InvoiceLine table, provide a query that COUNTs the number of line items for each Invoice. HINT: GROUP BY
 
 -- 12) line_item_track.sql: Provide a query that includes the purchased track name with each invoice line item.
 
+SELECT
+t.Name AS 'TrackName',
+i.*
+FROM InvoiceLine i
+LEFT JOIN Track t ON i.TrackId = t.TrackId;
+
 -- 13) line_item_track_artist.sql: Provide a query that includes the purchased track name AND artist name with each invoice line item.
 
+SELECT
+t.Name AS 'TrackName',
+ar."Name" AS 'ArtistName',
+i.*
+FROM InvoiceLine i
+LEFT JOIN Track t ON i.TrackId = t.TrackId
+LEFT JOIN Album al ON t.AlbumId = al.AlbumId
+LEFT JOIN Artist ar ON al.ArtistId = ar.ArtistId;
+
 -- 14) country_invoices.sql: Provide a query that shows the # of invoices per country. HINT: GROUP BY
+
+SELECT
+DISTINCT COUNT(i.BillingCountry) AS 'NumberOfInvoices'
+FROM Invoice i 
+GROUP BY i.BillingCountry;
 
 -- 15) playlists_track_count.sql: Provide a query that shows the total number of tracks in each playlist. The Playlist name should be include on the resulant table.
 
