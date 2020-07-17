@@ -62,21 +62,37 @@ LEFT JOIN Invoice i ON c.CustomerId = i.CustomerId;
 -- 8) total_invoices_{year}.sql: How many Invoices were there in 2009 and 2011?
 
 SELECT
-COUNT(i.InvoiceDate) AS 'NumberOfInvoices'
+STRFTIME('%Y', i.InvoiceDate) AS 'Year',
+COUNT(i.InvoiceId) AS 'NumberOfInvoices'
 FROM Invoice i 
-WHERE i.InvoiceDate LIKE '2009%'
-OR i.InvoiceDate LIKE '2011%';
+WHERE Year = '2009'
+OR Year = '2011'
+GROUP BY Year;
 
 -- 9) total_sales_{year}.sql: What are the respective total sales for each of those years?
+
+SELECT
+STRFTIME('%Y', i.InvoiceDate) AS 'Year',
+SUM(i.Total) AS 'TotalSales'
+FROM Invoice i 
+WHERE Year = '2009'
+OR Year = '2011'
+GROUP BY Year;
 
 -- 10) invoice_37_line_item_count.sql: Looking at the InvoiceLine table, provide a query that COUNTs the number of line items for Invoice ID 37.
 
 SELECT
-COUNT(i.InvoiceId) as 'Invoice37Count'
+COUNT(i.InvoiceId) AS 'Invoice37Count'
 FROM InvoiceLine i
 WHERE i.InvoiceId = 37;
 
 -- 11) line_items_per_invoice.sql: Looking at the InvoiceLine table, provide a query that COUNTs the number of line items for each Invoice. HINT: GROUP BY
+
+SELECT
+il.InvoiceId,
+COUNT(il.InvoiceId) AS 'NumberOfInvoiceLines'
+FROM InvoiceLine il 
+GROUP BY il.InvoiceId;
 
 -- 12) line_item_track.sql: Provide a query that includes the purchased track name with each invoice line item.
 
@@ -106,28 +122,137 @@ GROUP BY i.BillingCountry;
 
 -- 15) playlists_track_count.sql: Provide a query that shows the total number of tracks in each playlist. The Playlist name should be include on the resulant table.
 
+SELECT
+p.Name AS 'PlaylistName',
+COUNT(pt.TrackId) AS 'NumberOfTracks'
+FROM PlaylistTrack pt
+LEFT JOIN Playlist p ON pt.PlaylistId = p.PlaylistId
+GROUP BY pt.PlaylistId;
+
 -- 16) tracks_no_id.sql: Provide a query that shows all the Tracks, but displays no IDs. The result should include the Album name, Media type and Genre.
+
+SELECT
+t.Name AS 'TrackName',
+a.Title AS 'AlbumTitle',
+m.Name AS 'MediaTypeName',
+g.Name AS 'GenreName',
+t.Composer,
+t.Milliseconds,
+t.Bytes,
+t.UnitPrice
+FROM Track t
+LEFT JOIN Album a ON t.AlbumId = a.AlbumId
+LEFT JOIN MediaType m ON t.MediaTypeId = m.MediaTypeId
+LEFT JOIN Genre g ON t.GenreId = g.GenreId;
 
 -- 17) invoices_line_item_count.sql: Provide a query that shows all Invoices but includes the # of invoice line items.
 
+SELECT
+i.*,
+COUNT(i.InvoiceId) AS 'NumberOfLineItems'
+FROM Invoice i
+LEFT JOIN InvoiceLine il ON i.InvoiceId = il.InvoiceId
+GROUP BY i.InvoiceId;
+
 -- 18) sales_agent_total_sales.sql: Provide a query that shows total sales made by each sales agent.
 
--- 19) top_2009_agent.sql: Which sales agent made the most in sales in 2009?
+SELECT
+e.EmployeeId,
+e.FirstName,
+e.LastName,
+SUM(i.Total) as 'Total Sales'
+FROM Employee e
+LEFT JOIN Customer c ON e.EmployeeId = c.SupportRepId
+LEFT JOIN Invoice i ON c.CustomerId = i.CustomerId
+WHERE e.Title = 'Sales Support Agent'
+GROUP BY e.EmployeeId;
 
--- Hint: Use the MAX function on a subquery.
+-- 19. top_2009_agent.sql: Which sales agent made the most in sales in 2009?
+SELECT sub.agent AS "Sales Agent", MAX(sub.top) AS "Top 2009 Sales"
+FROM
+(SELECT e.FirstName || " " || e.LastName AS agent, SUM(i.Total) AS top 
+		FROM Employee e
+		JOIN Customer c ON e.EmployeeId = c.SupportRepId
+		JOIN Invoice i ON c.CustomerId = i.CustomerId
+		AND i.InvoiceDate BETWEEN "2009-01-01" AND "2009-12-31"
+		GROUP BY e.EmployeeId) sub;
 
--- 20) top_agent.sql: Which sales agent made the most in sales over all?
+-- 20. top_agent.sql: Which sales agent made the most in sales over all?
+SELECT sub.agent AS "Sales Agent", MAX(sub.top) AS "Top 2009 Sales"
+FROM
+(SELECT e.FirstName || " " || e.LastName AS agent, printf("%.2f", SUM(i.Total)) AS top 
+		FROM Employee e
+		JOIN Customer c ON e.EmployeeId = c.SupportRepId
+		JOIN Invoice i ON c.CustomerId = i.CustomerId
+		GROUP BY e.EmployeeId) sub;
 
 -- 21) sales_agent_customer_count.sql: Provide a query that shows the count of customers assigned to each sales agent.
 
+SELECT
+e.EmployeeId,
+e.FirstName,
+e.LastName,
+COUNT(c.SupportRepId) AS 'NumberOfCustomers'
+FROM Employee e
+LEFT JOIN Customer c ON e.EmployeeId = c.SupportRepId
+WHERE e.Title = "Sales Support Agent"
+GROUP BY e.EmployeeId;
+
 -- 22) sales_per_country.sql: Provide a query that shows the total sales per country.
 
--- 23) top_country.sql: Which country's customers spent the most?
+SELECT
+DISTINCT i.BillingCountry,
+SUM(i.Total) AS 'TotalSales'
+FROM Invoice i
+GROUP BY i.BillingCountry;
 
--- 24) top_2013_track.sql: Provide a query that shows the most purchased track of 2013.
+-- 23. top_country.sql: Which country's customers spent the most?
+SELECT sub.country AS "Country", MAX(sub.total) AS "Sales"
+FROM 
+	(SELECT i.BillingCountry AS country, SUM(i.Total) AS total
+	FROM Invoice i
+	GROUP BY i.BillingCountry) sub;
 
--- 25) top_5_tracks.sql: Provide a query that shows the top 5 most purchased tracks over all.
+SELECT i.BillingCountry AS country, SUM(i.Total) AS total
+	FROM Invoice i
+	GROUP BY i.BillingCountry
+	ORDER BY total DESC
+	LIMIT 1;
 
--- 26) top_3_artists.sql: Provide a query that shows the top 3 best selling artists.
+-- 24. top_2013_track.sql: Provide a query that shows the most purchased track of 2013.
+SELECT x.Song AS "Song" , MAX(x.Num) AS "Times Purchased"
+FROM 
+	(SELECT t.Name AS Song, SUM(il.Quantity) AS Num, i.InvoiceDate
+		FROM Invoice i
+		JOIN InvoiceLine il ON il.InvoiceId = i.InvoiceId
+		JOIN Track t ON il.TrackId = t.TrackId
+		WHERE i.InvoiceDate BETWEEN "2013-01-01" AND "2013-12-31"
+		GROUP BY t.Name) x;
 
--- 27) top_media_type.sql: Provide a query that shows the most purchased Media Type.
+-- 25. top_5_tracks.sql: Provide a query that shows the top 5 most purchased songs.
+SELECT t.Name AS "Song", SUM(il.Quantity) AS "Times Purchased"
+	FROM  InvoiceLine il
+	JOIN Track t ON il.TrackId = t.TrackId
+	GROUP BY t.Name
+	ORDER BY "Times Purchased" DESC
+	LIMIT 5;
+
+-- 26. top_3_artists.sql: Provide a query that shows the top 3 best selling artists.
+SELECT a.Name, SUM(il.Quantity) AS "Tracks Sold"
+FROM Artist a
+JOIN Album b ON b.ArtistId = a.ArtistId
+JOIN Track t ON t.AlbumId = b.AlbumId
+JOIN InvoiceLine il ON t.TrackId = il.TrackId
+GROUP BY a.Name
+ORDER BY "Tracks Sold" DESC
+LIMIT 3;
+
+-- 27. top_media_type.sql: Provide a query that shows the most purchased Media Type.
+SELECT x.media AS "Media Type", MAX(x.num) AS "Amount of Media Sold"
+	FROM 
+		(SELECT m.Name AS media, SUM(il.Quantity) AS num
+		FROM MediaType m
+		JOIN Track t ON t.MediaTypeId = m.MediaTypeId
+		JOIN InvoiceLine il ON t.TrackId = il.TrackId
+		GROUP BY m.Name
+		) x;
